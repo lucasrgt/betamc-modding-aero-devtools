@@ -57,6 +57,7 @@ fi
 
 while true; do
     rm -f "$BASE/temp/.restart"
+    rm -f "$BASE/temp/.src_hashes/previous.txt"
     cd "$BASE"
 
     echo ""

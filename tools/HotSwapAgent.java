@@ -62,19 +62,10 @@ public class HotSwapAgent {
             System.exit(0);
         }
 
-        // Use .hotswap_marker (created BEFORE recompile) to find only changed classes
-        File marker = new File(classDir, ".hotswap_marker");
-        long lastSwap = marker.exists() ? marker.lastModified() : 0;
-
-        // Collect changed classes
+        // All files in this dir are pre-filtered (only changed classes)
         Map<ReferenceType, byte[]> redefinitions = new HashMap<ReferenceType, byte[]>();
-        int skipped = 0;
 
         for (File cf : classFiles) {
-            if (cf.lastModified() <= lastSwap) {
-                skipped++;
-                continue;
-            }
             String className = cf.getName().replace(".class", "");
 
             // Find class in VM
@@ -97,7 +88,7 @@ public class HotSwapAgent {
         }
 
         if (redefinitions.isEmpty()) {
-            System.out.println("No changed classes to swap (" + skipped + " unchanged)");
+            System.out.println("No changed classes to swap");
             vm.dispose();
             System.exit(0);
         }
@@ -116,13 +107,6 @@ public class HotSwapAgent {
             }
         }
         System.out.println("Swapped " + swapped + " classes" + (failed > 0 ? " (" + failed + " skipped)" : "") + "!");
-        try {
-            marker.createNewFile();
-            marker.setLastModified(System.currentTimeMillis());
-        } catch (Exception e) {
-            System.err.println("FAILED: " + e.getMessage());
-        }
-
         vm.dispose();
     }
 }

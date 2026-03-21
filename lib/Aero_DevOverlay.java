@@ -189,7 +189,7 @@ public class Aero_DevOverlay {
                     if (isSwap && hasDcevm) {
                         // Run HotSwapAgent to push classes via JDWP
                         setStatus("Pushing classes via DCEVM...", 0xFFDCDCAA);
-                        java.io.File classDir = new java.io.File(fBase, "mcp/minecraft/bin/net/minecraft/src");
+                        java.io.File classDir = new java.io.File(fBase, "temp/.changed_classes");
                         java.io.File toolsJar = new java.io.File(jdkPath, "lib/tools.jar");
                         java.io.File workspace = Aero_DevBootstrap.resolveWorkspace();
                         java.io.File devtoolsDir = new java.io.File(workspace, "libraries/devtools/tools");
@@ -226,7 +226,7 @@ public class Aero_DevOverlay {
                         long totalElapsed = System.currentTimeMillis() - start;
                         String totalTime = (totalElapsed / 1000) + "." + ((totalElapsed % 1000) / 100) + "s";
 
-                        if (swapExit == 0 && swapResult.contains("OK")) {
+                        if (swapExit == 0 && (swapResult.contains("Swapped") || swapResult.contains("OK"))) {
                             setStatus("Live swap OK (" + totalTime + ")", 0xFF4EC9B0);
                         } else {
                             setStatus("Recompiled (" + time + ") - swap failed: " + swapResult, 0xFFFFAA00);
