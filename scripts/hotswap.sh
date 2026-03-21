@@ -74,9 +74,7 @@ else
     echo "=== Transpiling $COUNT changed files ==="
     for src_file in $CHANGED_SRC; do
         basename_f=$(basename "$src_file")
-        # Determine package and strip it
         if echo "$src_file" | grep -q "^src/"; then
-            # Mod source: strip package, convert imports
             sed \
                 -e 's/^package betaenergistics\(\.[a-z_]*\)\?;/package net.minecraft.src;/' \
                 -e '/^import betaenergistics\./d' \
@@ -84,7 +82,6 @@ else
                 -e '/^import net\.minecraft\.src\.\*;/d' \
                 "$src_file" > "$DEST/$basename_f"
         elif echo "$src_file" | grep -q "libraries/"; then
-            # Library source: strip aero package
             sed \
                 -e 's/^package aero\.\([a-z_]*\);/package net.minecraft.src;/' \
                 -e '/^import aero\./d' \
@@ -95,39 +92,31 @@ else
     done
 fi
 
-# 3. Compile only the changed transpiled files
-echo "=== Compiling $COUNT files ==="
-JAVA_FILES=""
-if [ "$CHANGED_SRC" = "ALL" ]; then
-    # First run: compile all mod classes
-    JAVA_FILES=$(find "$DEST" -name "BE_*.java" -o -name "mod_*.java" -o -name "Aero_*.java" | tr '\n' ' ')
-else
-    for src_file in $CHANGED_SRC; do
-        basename_f=$(basename "$src_file")
-        if [ -f "$DEST/$basename_f" ]; then
-            JAVA_FILES="$JAVA_FILES $DEST/$basename_f"
-        fi
-    done
-fi
+# 3. Build (obfuscate) — produces reobf/ classes matching runtime jar
+echo "=== Building ==="
+cd "$BASE/mcp"
+echo "build" | java -jar RetroMCP-Java-CLI.jar
+cd "$BASE"
 
-# Build classpath
-CP="$BIN_DIR"
-for jar in $(find "$LIBS_DIR" -name "*.jar" 2>/dev/null); do
-    CP="$CP;$jar"
-done
-[ -f "tests/data/minecraft_run.jar" ] && CP="$CP;tests/data/minecraft_run.jar"
-
-javac -encoding UTF-8 -source 1.6 -target 1.6 -cp "$CP" -d "$BIN_DIR" $JAVA_FILES 2>&1
-
-# 4. Collect changed .class files
+# 4. Collect changed .class files from reobf/
+REOBF="mcp/minecraft/reobf"
 rm -rf "$CHANGED_DIR"
 mkdir -p "$CHANGED_DIR"
-for jf in $JAVA_FILES; do
-    bname=$(basename "$jf" .java)
-    for cf in "$BIN_SRC/$bname.class" "$BIN_SRC/${bname}\$"*.class; do
-        [ -f "$cf" ] && cp -- "$cf" "$CHANGED_DIR/" 2>/dev/null || true
-    done
-done
+if [ -f "$HASH_DIR/reobf_before.txt" ]; then
+    md5sum "$REOBF"/*.class 2>/dev/null | sort > "$HASH_DIR/reobf_after.txt"
+    while IFS=' ' read -r new_hash filepath; do
+        bname=$(basename "$filepath")
+        old_hash=$(grep "$bname" "$HASH_DIR/reobf_before.txt" 2>/dev/null | awk '{print $1}')
+        if [ "$new_hash" != "$old_hash" ]; then
+            cp -- "$filepath" "$CHANGED_DIR/" 2>/dev/null || true
+        fi
+    done < "$HASH_DIR/reobf_after.txt"
+else
+    # First run — copy all
+    cp "$REOBF"/*.class "$CHANGED_DIR/" 2>/dev/null || true
+fi
+# Save reobf hashes for next run
+md5sum "$REOBF"/*.class 2>/dev/null | sort > "$HASH_DIR/reobf_before.txt"
 
 SWAP_COUNT=$(find "$CHANGED_DIR" -name "*.class" 2>/dev/null | wc -l)
 echo "=== OK — $SWAP_COUNT classes to swap ==="
