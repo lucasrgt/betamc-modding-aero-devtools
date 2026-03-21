@@ -17,7 +17,6 @@ fi
 # Parse devtools.json
 MOD_PATH=$(grep '"modPath"' "$CONFIG" | sed 's/.*: *"\(.*\)".*/\1/')
 JDK_PATH=$(grep '"jdkPath"' "$CONFIG" | sed 's/.*: *"\(.*\)".*/\1/')
-BASH_PATH=$(grep '"bashPath"' "$CONFIG" | sed 's/.*: *"\(.*\)".*/\1/')
 JDWP_PORT=$(grep '"jdwpPort"' "$CONFIG" | sed 's/.*: *\([0-9]*\).*/\1/')
 HAS_DCEVM=$(grep '"dcevm"' "$CONFIG" | sed 's/.*: *\(.*\)/\1/' | tr -d ', ')
 
@@ -64,47 +63,24 @@ while true; do
     echo "[Aero] === Transpiling ==="
     bash scripts/transpile.sh
 
-    echo "[Aero] === Building ==="
+    echo "[Aero] === Recompiling (no obfuscation for DCEVM) ==="
     cd "$BASE/mcp"
-    echo "build" | java -jar RetroMCP-Java-CLI.jar
+    echo "recompile" | java -jar RetroMCP-Java-CLI.jar
     cd "$BASE"
-
-    echo "[Aero] === Preparing jar ==="
-    cp tests/data/minecraft_test.jar tests/data/minecraft_run.jar
-
-    # Strip signatures (JDK 8u181 enforces SHA1)
-    STRIP_DIR="$BASE/temp/jar_strip"
-    mkdir -p "$STRIP_DIR" && cd "$STRIP_DIR" && rm -rf *
-    jar xf "$BASE/tests/data/minecraft_run.jar"
-    rm -f META-INF/*.SF META-INF/*.RSA META-INF/*.DSA
-    jar cf "$BASE/tests/data/minecraft_run.jar" *
-    cd "$BASE"
-
-    # Inject mod classes
-    TMP="$BASE/temp/build_tmp"
-    rm -rf "$TMP" && mkdir -p "$TMP" && cd "$TMP"
-    jar xf "$BASE/mcp/build/minecraft.zip"
-    jar uf "$BASE/tests/data/minecraft_run.jar" *.class
-    cd "$BASE" && rm -rf "$TMP"
-
-    # Inject textures
-    if [ -d "$BASE/temp/merged" ]; then
-        cd "$BASE/temp/merged"
-        jar uf "$BASE/tests/data/minecraft_run.jar" .
-        cd "$BASE"
-    fi
 
     mkdir -p "$BASE/tests/data/tmp"
     LIBS="mcp/libraries"
 
     echo ""
-    echo "[Aero] === Launching Minecraft ==="
+    echo "[Aero] === Launching Minecraft (DCEVM from bin/) ==="
+    echo "[Aero] JDWP port: $JDWP_PORT"
+    echo ""
     java $DCEVM_FLAG -Xms1024M -Xmx1024M \
       -Daero.dev=true \
       -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$JDWP_PORT \
       -Djava.library.path="$LIBS/natives" \
       -Djava.io.tmpdir="$BASE/tests/data/tmp" \
-      -cp "temp/merged;tests/data/minecraft_run.jar;$LIBS/net/java/jinput/jinput/2.0.5/jinput-2.0.5.jar;$LIBS/net/java/jutils/jutils/1.0.0/jutils-1.0.0.jar;$LIBS/org/lwjgl/lwjgl/lwjgl/2.9.4-nightly-20150209/lwjgl-2.9.4-nightly-20150209.jar;$LIBS/org/lwjgl/lwjgl/lwjgl_util/2.9.4-nightly-20150209/lwjgl_util-2.9.4-nightly-20150209.jar;$LIBS/com/paulscode/codecjorbis/20230120/codecjorbis-20230120.jar;$LIBS/com/paulscode/codecwav/20101023/codecwav-20101023.jar;$LIBS/com/paulscode/libraryjavasound/20101123/libraryjavasound-20101123.jar;$LIBS/com/paulscode/librarylwjglopenal/20100824/librarylwjglopenal-20100824.jar;$LIBS/com/paulscode/soundsystem/20120107/soundsystem-20120107.jar" \
+      -cp "temp/merged;mcp/minecraft/bin;tests/data/minecraft_run.jar;$LIBS/net/java/jinput/jinput/2.0.5/jinput-2.0.5.jar;$LIBS/net/java/jutils/jutils/1.0.0/jutils-1.0.0.jar;$LIBS/org/lwjgl/lwjgl/lwjgl/2.9.4-nightly-20150209/lwjgl-2.9.4-nightly-20150209.jar;$LIBS/org/lwjgl/lwjgl/lwjgl_util/2.9.4-nightly-20150209/lwjgl_util-2.9.4-nightly-20150209.jar;$LIBS/com/paulscode/codecjorbis/20230120/codecjorbis-20230120.jar;$LIBS/com/paulscode/codecwav/20101023/codecwav-20101023.jar;$LIBS/com/paulscode/libraryjavasound/20101123/libraryjavasound-20101123.jar;$LIBS/com/paulscode/librarylwjglopenal/20100824/librarylwjglopenal-20100824.jar;$LIBS/com/paulscode/soundsystem/20120107/soundsystem-20120107.jar" \
       net.minecraft.client.Minecraft || true
 
     # Check restart flag

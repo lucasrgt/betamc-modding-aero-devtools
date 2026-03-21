@@ -1,5 +1,5 @@
 #!/bin/bash
-# Aero DevTools — Hot swap (transpile + build)
+# Aero DevTools — Hot swap (transpile + recompile to bin/)
 # Called by F6 overlay or manually. Reads devtools.json.
 set -e
 
@@ -23,12 +23,16 @@ fi
 
 cd "$BASE"
 
+# Create marker BEFORE recompile so we can find only changed classes
+touch mcp/minecraft/bin/.hotswap_marker
+sleep 1
+
 echo "=== Transpiling ==="
 bash scripts/transpile.sh
 
-echo "=== Building ==="
+echo "=== Recompiling (to bin/, no obfuscation) ==="
 cd "$BASE/mcp"
-echo "build" | java -jar RetroMCP-Java-CLI.jar
+echo "recompile" | java -jar RetroMCP-Java-CLI.jar
 cd "$BASE"
 
-echo "=== Build OK ==="
+echo "=== Recompile OK ==="

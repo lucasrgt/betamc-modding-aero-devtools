@@ -62,8 +62,8 @@ public class HotSwapAgent {
             System.exit(0);
         }
 
-        // Check marker file for last swap time
-        File marker = new File(classDir, ".lastswap");
+        // Use .hotswap_marker (created BEFORE recompile) to find only changed classes
+        File marker = new File(classDir, ".hotswap_marker");
         long lastSwap = marker.exists() ? marker.lastModified() : 0;
 
         // Collect changed classes
@@ -102,12 +102,21 @@ public class HotSwapAgent {
             System.exit(0);
         }
 
-        // Redefine classes
-        System.out.print("Swapping " + redefinitions.size() + " classes... ");
+        // Redefine classes one by one (skip failures gracefully)
+        int swapped = 0;
+        int failed = 0;
+        for (Map.Entry<ReferenceType, byte[]> entry : redefinitions.entrySet()) {
+            Map<ReferenceType, byte[]> single = new HashMap<ReferenceType, byte[]>();
+            single.put(entry.getKey(), entry.getValue());
+            try {
+                vm.redefineClasses(single);
+                swapped++;
+            } catch (Throwable e) {
+                failed++;
+            }
+        }
+        System.out.println("Swapped " + swapped + " classes" + (failed > 0 ? " (" + failed + " skipped)" : "") + "!");
         try {
-            vm.redefineClasses(redefinitions);
-            System.out.println("OK!");
-            // Update marker
             marker.createNewFile();
             marker.setLastModified(System.currentTimeMillis());
         } catch (Exception e) {

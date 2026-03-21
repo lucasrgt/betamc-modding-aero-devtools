@@ -189,9 +189,7 @@ public class Aero_DevOverlay {
                     if (isSwap && hasDcevm) {
                         // Run HotSwapAgent to push classes via JDWP
                         setStatus("Pushing classes via DCEVM...", 0xFFDCDCAA);
-                        java.io.File reobf = new java.io.File(fBase, "mcp/minecraft/reobf");
-                        // Remove marker so agent sees all classes as changed
-                        new java.io.File(reobf, ".lastswap").delete();
+                        java.io.File classDir = new java.io.File(fBase, "mcp/minecraft/bin/net/minecraft/src");
                         java.io.File toolsJar = new java.io.File(jdkPath, "lib/tools.jar");
                         java.io.File workspace = Aero_DevBootstrap.resolveWorkspace();
                         java.io.File devtoolsDir = new java.io.File(workspace, "libraries/devtools/tools");
@@ -213,7 +211,7 @@ public class Aero_DevOverlay {
                         String cp = toolsJar.getAbsolutePath() + java.io.File.pathSeparator +
                                     devtoolsDir.getAbsolutePath();
                         ProcessBuilder pb3 = new ProcessBuilder(javaExe, "-cp", cp,
-                            "HotSwapAgent", String.valueOf(port), reobf.getAbsolutePath());
+                            "HotSwapAgent", String.valueOf(port), classDir.getAbsolutePath());
                         pb3.directory(fBase);
                         pb3.redirectErrorStream(true);
                         Process p3 = pb3.start();
