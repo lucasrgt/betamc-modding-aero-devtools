@@ -69,6 +69,18 @@ while true; do
     echo "recompile" | java -jar RetroMCP-Java-CLI.jar
     cd "$BASE"
 
+    # Inject TMI/SPC/mods from jar into bin/ (so they work in DCEVM mode)
+    if [ -f "$BASE/tests/data/minecraft_test.jar" ]; then
+        INJECT_TMP=$(mktemp -d)
+        cd "$INJECT_TMP"
+        jar xf "$BASE/tests/data/minecraft_test.jar" 2>/dev/null
+        cp TMI*.class _tmi*.class SPC*.class PlayerHelper*.class Settings.class dc.class \
+           "$BASE/mcp/minecraft/bin/net/minecraft/src/" 2>/dev/null || true
+        cd "$BASE"
+        rm -rf "$INJECT_TMP"
+        echo "[Aero] TMI/SPC injected into bin/"
+    fi
+
     mkdir -p "$BASE/tests/data/tmp"
     LIBS="mcp/libraries"
 
