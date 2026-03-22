@@ -2,10 +2,11 @@ package aero.devtools;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.src.ModLoader;
-import net.minecraft.src.ModTextureStatic;
+import net.minecraft.src.TextureFX;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +33,21 @@ public class Aero_DevTextureReload {
 
     // ordered list of registered mod IDs
     private static ArrayList<String> modIds = new ArrayList<String>();
+
+    // Cached reflection constructor for ModTextureStatic(int, int, BufferedImage)
+    private static Constructor<?> modTextureStaticCtor;
+    static {
+        // ModTextureStatic lives in default package in the obfuscated jar,
+        // but in net.minecraft.src in the MCP dev environment
+        String[] candidates = { "net.minecraft.src.ModTextureStatic", "ModTextureStatic" };
+        for (String name : candidates) {
+            try {
+                Class<?> cls = Class.forName(name);
+                modTextureStaticCtor = cls.getConstructor(int.class, int.class, BufferedImage.class);
+                break;
+            } catch (Exception ignored) {}
+        }
+    }
 
     /**
      * Register a mod's asset source directory.
@@ -102,8 +118,8 @@ public class Aero_DevTextureReload {
 
             try {
                 BufferedImage img = javax.imageio.ImageIO.read(assetFile);
-                if (img != null) {
-                    ModTextureStatic tex = new ModTextureStatic(texIndex, atlasId, img);
+                if (img != null && modTextureStaticCtor != null) {
+                    TextureFX tex = (TextureFX) modTextureStaticCtor.newInstance(texIndex, atlasId, img);
                     mc.renderEngine.registerTextureFX(tex);
                     count++;
                 }
